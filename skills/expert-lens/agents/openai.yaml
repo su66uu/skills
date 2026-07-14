@@ -1,0 +1,4 @@
+interface:
+  display_name: "Expert Lens"
+  short_description: "Expert context beyond surface-level docs"
+  default_prompt: "Use $expert-lens to explain this topic with expert context, gotchas, and current practitioner insight."

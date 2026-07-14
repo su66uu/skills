@@ -8,6 +8,7 @@ Each skill lives in its own directory under `skills/` and follows the standard `
 
 | Skill | Description |
 | --- | --- |
+| `expert-lens` | Adds practitioner-grade context, gotchas, trends, and expert mental models to learning and exploration requests. |
 | `letmecode` | Guides a developer through coding tasks as a learning coach while the developer writes the code themselves. |
 
 ## Install
@@ -27,19 +28,19 @@ npx skills add su66uu/skills --skill '*'
 Install one skill:
 
 ```bash
-npx skills add su66uu/skills --skill letmecode
+npx skills add su66uu/skills --skill expert-lens
 ```
 
 Install one skill globally for Codex:
 
 ```bash
-npx skills add su66uu/skills --skill letmecode -g -a codex
+npx skills add su66uu/skills --skill expert-lens -g -a codex
 ```
 
 Install one skill globally for Claude Code:
 
 ```bash
-npx skills add su66uu/skills --skill letmecode -g -a claude-code
+npx skills add su66uu/skills --skill expert-lens -g -a claude-code
 ```
 
 ## Local Install
@@ -59,7 +60,7 @@ npx skills add . --skill '*'
 Install one local skill:
 
 ```bash
-npx skills add . --skill letmecode
+npx skills add . --skill expert-lens
 ```
 
 ## Repository Layout
@@ -74,6 +75,12 @@ Current layout:
 
 ```text
 skills/
+  expert-lens/
+    agents/
+      openai.yaml
+    SKILL.md
+    SPEC.md
+    SOURCES.md
   letmecode/
     SKILL.md
 ```
@@ -104,7 +111,7 @@ Keep the `name` value aligned with the directory name.
 Installs through the `skills` CLI can make the repository and its skills appear on skills.sh:
 
 ```bash
-npx skills add su66uu/skills --skill letmecode
+npx skills add su66uu/skills --skill expert-lens
 ```
 
 Do not disable telemetry if you want installs to count toward skills.sh discovery and ranking.
