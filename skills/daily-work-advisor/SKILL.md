@@ -46,6 +46,10 @@ Match the user's request to the smallest workflow that answers it:
 
 Do not run every workflow by default.
 
+## Jira reference format
+
+Whenever a Jira ticket is shown or mentioned, format it as `KEY — Summary`. Include its current status when relevant. Fetch the short summary as metadata for blockers, dependencies, related tickets, parents, and epics; do not make the user look up a bare key. If the summary cannot be read, say `title unavailable` rather than inventing it.
+
 ## Morning scan
 
 Use the Jira board's actual column mapping. Read only the configured To Do and In Progress equivalents. Default to tickets assigned to the engagement identity and exclude unassigned tickets unless the profile or user says otherwise.
@@ -68,14 +72,25 @@ Return a compact list grouped by In Progress and To Do. Highlight only obvious a
 
 When the assigned To Do/In Progress query returns no tickets, automatically switch to a pickup-candidate scan. Do not spend another query searching arbitrary non-Done statuses assigned to the user.
 
-1. Fetch unassigned tickets from the board's To Do equivalent, still metadata-only and within the configured result limit. Do not include tickets assigned to another person.
-2. For each candidate, read only its blocked/flagged metadata, explicit dependency links, and the current status of issues that block it. Resolve blockers across the configured board when needed; do not load the entire board or blocker descriptions.
-3. Use the board's configured blocker fields and link conventions when known. If the board's blocking convention is unavailable or ambiguous, do not assume that an absence of visible links means unblocked.
-4. Classify each candidate:
-   - `ready`: no unresolved explicit blocker or blocked signal is visible.
-   - `blocked`: an unresolved blocking issue or blocked signal is visible; show blocker keys and statuses.
+1. Fetch unassigned tickets from the board's To Do equivalent. Do not include tickets assigned to another person.
+2. Select at most three candidates using board rank first, priority second, and recent activity as the tie-breaker.
+3. Run a shallow dependency preflight on only those candidates. Check:
+   - Blocked/flagged metadata and explicit issue links.
+   - Direct dependency statements and ticket-key references in the candidate.
+   - Targeted searches for open board tickets that reference the candidate key.
+   - Parent, epic, and sibling relationships as search leads, not proof of dependency.
+   - Directly linked documentation that specifies implementation order.
+   - Linked branches or pull requests that clearly require another unmerged change.
+4. Resolve the current status and short summary of each suspected blocker. Distinguish `candidate is blocked by X` from `candidate blocks X`. Do not load the whole board, blocker descriptions, or unrelated documents.
+5. Classify the evidence:
+   - `confirmed blocker`: an explicit link, documented order, or direct technical prerequisite establishes the dependency.
+   - `probable blocker`: strong ticket, documentation, or pull-request evidence indicates an undocumented dependency.
+   - `possible dependency`: evidence suggests ordering but is insufficient to call it a blocker.
+   - `no blocker evidence found`: no blocker is visible after the shallow checks; this is not proof that none exists.
    - `unknown`: dependency information cannot be verified reliably.
-5. Preserve board rank when available, then use priority and recent activity. Ask the user which candidate to research; never assign or transition it.
+6. Show the evidence and confidence for each candidate. Include `KEY — Summary (Status)` for every blocker or dependent ticket. Ask the user which candidate to research; never assign or transition it.
+
+Do not infer a dependency merely because tickets share an epic, component, label, or sprint. Use those attributes only to find stronger evidence. After the user selects a candidate, use the ticket-research workflow to inspect code, architecture, and indirect technical prerequisites more deeply.
 
 Treat `include_unassigned: false` as the default for the normal morning scan, not as a prohibition on this empty-queue fallback. Keep the fallback shallow until the user selects a ticket.
 
