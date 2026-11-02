@@ -64,6 +64,21 @@ Do not fetch descriptions, comments, histories, Confluence pages, code, diffs, o
 
 Return a compact list grouped by In Progress and To Do. Highlight only obvious attention items, then ask the user to select today's tickets. Do not choose for the user.
 
+### Empty assigned queue
+
+When the assigned To Do/In Progress query returns no tickets, automatically switch to a pickup-candidate scan. Do not spend another query searching arbitrary non-Done statuses assigned to the user.
+
+1. Fetch unassigned tickets from the board's To Do equivalent, still metadata-only and within the configured result limit. Do not include tickets assigned to another person.
+2. For each candidate, read only its blocked/flagged metadata, explicit dependency links, and the current status of issues that block it. Resolve blockers across the configured board when needed; do not load the entire board or blocker descriptions.
+3. Use the board's configured blocker fields and link conventions when known. If the board's blocking convention is unavailable or ambiguous, do not assume that an absence of visible links means unblocked.
+4. Classify each candidate:
+   - `ready`: no unresolved explicit blocker or blocked signal is visible.
+   - `blocked`: an unresolved blocking issue or blocked signal is visible; show blocker keys and statuses.
+   - `unknown`: dependency information cannot be verified reliably.
+5. Preserve board rank when available, then use priority and recent activity. Ask the user which candidate to research; never assign or transition it.
+
+Treat `include_unassigned: false` as the default for the normal morning scan, not as a prohibition on this empty-queue fallback. Keep the fallback shallow until the user selects a ticket.
+
 ## Ticket research
 
 Research only explicitly selected ticket keys. If more than three are selected, ask the user for an order or start with the highest-priority ticket and say what remains.
