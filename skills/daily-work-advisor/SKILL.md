@@ -30,9 +30,23 @@ Determine the active coding agent and load its engagement profile using the same
 - Codex: `$CODEX_HOME/engagements/*.yaml` when `CODEX_HOME` is set, otherwise `~/.codex/engagements/*.yaml`
 - Other agents: use the agent's established configuration directory or ask the user.
 
-Do not infer the active agent from directories alone. If one profile exists, use it. If multiple profiles exist, ask which engagement is active. If none exists or essential identity/Jira fields are missing, direct the user to `$engagement-onboarding` rather than inventing values.
+Do not infer the active agent from directories alone. If one profile exists, use it. If multiple profiles exist, ask which engagement is active. If none exists, direct the user to `$engagement-onboarding` rather than inventing values. For board-driven workflows, also require a stable Jira account ID and a confirmed board plus squad/team work scope; ask the user to resume onboarding when those fields are missing.
 
 Read the profile but do not silently modify it. Use the configured client identity, Jira board, column mapping, ticket limit, allowed Confluence spaces, repositories, and notification preference. Treat `pending` capabilities as unavailable for the current run.
+
+## Jira work scope
+
+Treat the confirmed board and squad/team as a mandatory work-candidate boundary. Build every assigned-work and pickup-candidate query from that base scope; never widen it to the project alone.
+
+- Match "assigned to me" using the stable Jira account ID, not preferred name, display name, or email.
+- Prefer the board's saved filter plus the confirmed squad/team field and value. Use field and option IDs when available.
+- Validate every displayed work candidate against both board membership and squad/team membership. Exclude tickets assigned to another squad even when they share the same project.
+- If the connector cannot enforce or verify the scope, fail closed: show no candidates and explain which scope check is unavailable.
+- Display the effective scope at the top of board-driven results, for example `Scope: Board 1214 · Squad: B2B APIs`.
+
+Dependency lookup has a different boundary. A scoped work candidate may be blocked by a ticket from another squad. Allow targeted cross-squad lookup only when explicit or inferred evidence points to that ticket; label its squad when readable and never offer it as pickup work. Do not run a broad cross-squad candidate search.
+
+If the user explicitly supplies an out-of-scope ticket, identify the mismatch and ask before researching it. Never include it automatically.
 
 ## Choose the workflow
 
@@ -52,7 +66,7 @@ Whenever a Jira ticket is shown or mentioned, format it as `KEY — Summary`. In
 
 ## Morning scan
 
-Use the Jira board's actual column mapping. Read only the configured To Do and In Progress equivalents. Default to tickets assigned to the engagement identity and exclude unassigned tickets unless the profile or user says otherwise.
+Use the Jira board's actual column mapping within the confirmed work scope. Read only the configured To Do and In Progress equivalents. Default to tickets assigned to the engagement's Jira account ID and exclude unassigned tickets unless the profile or user says otherwise.
 
 Fetch metadata only:
 
@@ -72,23 +86,23 @@ Return a compact list grouped by In Progress and To Do. Highlight only obvious a
 
 When the assigned To Do/In Progress query returns no tickets, automatically switch to a pickup-candidate scan. Do not spend another query searching arbitrary non-Done statuses assigned to the user.
 
-1. Fetch unassigned tickets from the board's To Do equivalent. Do not include tickets assigned to another person.
+1. Fetch unassigned tickets from the board's To Do equivalent within the confirmed squad/team work scope. Do not include tickets assigned to another person or squad.
 2. Select at most three candidates using board rank first, priority second, and recent activity as the tie-breaker.
 3. Run a shallow dependency preflight on only those candidates. Check:
    - Blocked/flagged metadata and explicit issue links.
    - Direct dependency statements and ticket-key references in the candidate.
-   - Targeted searches for open board tickets that reference the candidate key.
+   - Targeted searches for open tickets that reference the candidate key, including another squad when evidence points there.
    - Parent, epic, and sibling relationships as search leads, not proof of dependency.
    - Directly linked documentation that specifies implementation order.
    - Linked branches or pull requests that clearly require another unmerged change.
-4. Resolve the current status and short summary of each suspected blocker. Distinguish `candidate is blocked by X` from `candidate blocks X`. Do not load the whole board, blocker descriptions, or unrelated documents.
+4. Resolve the current status, short summary, and squad/team of each suspected blocker when readable. Distinguish `candidate is blocked by X` from `candidate blocks X`. Do not load the whole board, blocker descriptions, or unrelated documents.
 5. Classify the evidence:
    - `confirmed blocker`: an explicit link, documented order, or direct technical prerequisite establishes the dependency.
    - `probable blocker`: strong ticket, documentation, or pull-request evidence indicates an undocumented dependency.
    - `possible dependency`: evidence suggests ordering but is insufficient to call it a blocker.
    - `no blocker evidence found`: no blocker is visible after the shallow checks; this is not proof that none exists.
    - `unknown`: dependency information cannot be verified reliably.
-6. Show the evidence and confidence for each candidate. Include `KEY — Summary (Status)` for every blocker or dependent ticket. Ask the user which candidate to research; never assign or transition it.
+6. Show the evidence and confidence for each candidate. Include `KEY — Summary (Status, Squad)` for every cross-squad blocker or dependent ticket. Ask the user which candidate to research; never assign or transition it.
 
 Do not infer a dependency merely because tickets share an epic, component, label, or sprint. Use those attributes only to find stronger evidence. After the user selects a candidate, use the ticket-research workflow to inspect code, architecture, and indirect technical prerequisites more deeply.
 

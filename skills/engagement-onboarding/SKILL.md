@@ -86,9 +86,11 @@ Use the smallest metadata request that answers the question.
 
 For Jira and Confluence:
 
-- Identify the accessible site and current account.
+- Identify the accessible site and current account, including the stable Jira account ID used for assignee queries.
 - Discover candidate boards only when the primary board is unknown.
-- Inspect board names and column mappings, not ticket descriptions or entire backlogs.
+- Inspect the selected board's name, saved-filter ID when available, and column mappings, not ticket descriptions or entire backlogs.
+- Discover the user's work scope within the board, such as squad or team. Prefer the Jira field ID and option ID plus their display names. Derive them from board configuration or a user-confirmed in-scope ticket, then ask the user to confirm the value.
+- Keep work-candidate scope separate from dependency scope: daily work must match the confirmed squad/team, while a blocker may belong to another squad.
 - Record allowed or relevant Confluence spaces only after they become known through actual work or user confirmation.
 
 For GitHub and repositories:
@@ -102,7 +104,7 @@ Prefer existing client-provided integrations. Do not create alternative MCP or c
 
 ### 4. Validate identity and safety
 
-Present discovered identities for confirmation. Flag mismatches between the client email, Jira account, GitHub account, Git author, site, organization, and repository remote.
+Present discovered identities and Jira work scope for confirmation. Flag mismatches between the client email, Jira account, GitHub account, Git author, site, organization, repository remote, board, and squad/team. A preferred name may differ from the Jira display name; use the stable Jira account ID for matching.
 
 Build a capability report containing:
 
@@ -119,6 +121,9 @@ Never claim that a connector or CLI is read-only solely because this skill promi
 Collect preferences only as they become useful:
 
 - Primary Jira board.
+- Jira board name and saved-filter ID when available.
+- Stable Jira account ID for the active identity.
+- Work-candidate squad/team field and value. Treat this as required before the daily advisor recommends tickets.
 - Board columns for the morning scan, defaulting to the board's To Do and In Progress equivalents.
 - Whether to include unassigned tickets; default to false.
 - Morning ticket limit; default to 15.
@@ -140,10 +145,19 @@ engagement:
 identity:
   preferred_name: Venkat
   email: venkat@example.com
+  jira_account_id: account-id
 
 jira:
   site: example.atlassian.net
   board_id: unknown
+  board_name: unknown
+  board_filter_id: unknown
+  work_scope:
+    field_id: unknown
+    field_name: Squad
+    value_id: unknown
+    value_name: B2B APIs
+    status: discovered
   included_columns: []
   morning_ticket_limit: 15
   status: discovered
@@ -179,12 +193,13 @@ Return:
 4. Read-only enforcement warnings.
 5. The single most useful next action.
 
-When new access arrives, resume from the saved profile, re-check only the affected capability, and request confirmation before changing previously confirmed mappings.
+When new access arrives, resume from the saved profile, re-check only the affected capability, and request confirmation before changing previously confirmed mappings. When an existing profile lacks Jira account or work-scope fields, offer to backfill them without redoing unrelated onboarding.
 
 ## Decision rules
 
 - Prefer discovery over questions, and confirmation over re-entry.
 - Prefer narrow metadata calls over broad searches.
+- Fail closed on daily work readiness when the Jira squad/team scope cannot be verified; keep onboarding otherwise usable and mark that scope pending.
 - Do not require a full repository inventory.
 - Do not make onboarding wait for GitHub or Confluence when Jira-only assistance is already possible.
 - Draft access-request text when useful, but never send it.
