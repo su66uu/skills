@@ -17,7 +17,7 @@ Operate as a local, read-only advisor.
 - Do not request, display, copy, or store passwords, tokens, cookies, or private keys.
 - Treat available tools as capabilities, not permission. Do not call a mutating tool merely because it is exposed.
 - Store only identifiers, preferences, access states, and timestamps. Do not cache ticket bodies, comments, documents, diffs, or other client content in the profile.
-- Keep the profile outside client repositories and source control. Before first persistence, confirm the local path with the user.
+- Keep the profile in the active coding agent's configuration directory, outside client repositories and source control. Before first persistence, confirm the local path with the user.
 - If strict read-only enforcement cannot be verified, say so. Distinguish a hard restriction from an instruction that relies on agent compliance.
 
 ## Onboarding model
@@ -34,11 +34,30 @@ Use these states for each capability:
 
 Never mark the whole onboarding blocked merely because one system is pending.
 
+## Profile location
+
+Store profiles under the active coding agent, not in a shared cross-agent directory:
+
+- Claude Code: `~/.claude/engagements/<client-slug>.yaml`
+- Codex: `$CODEX_HOME/engagements/<client-slug>.yaml` when `CODEX_HOME` is set, otherwise `~/.codex/engagements/<client-slug>.yaml`
+- Other agents: use that agent's established user configuration directory. If it cannot be determined confidently, ask the user to confirm it.
+
+Do not infer the active agent merely from directories present on disk. Do not copy, move, or synchronize profiles between agents automatically. Record the runtime in the profile because available tools and enforcement can differ by agent.
+
+Use a filesystem-safe, lowercase client slug. Restrict the `engagements` directory to the user (`0700`) and profile to the user (`0600`) where supported.
+
 ## Workflow
 
 ### 1. Resume before creating
 
-Look for a previously confirmed profile path in the current conversation or user-provided location. If a profile exists, read it and preserve confirmed values. Do not overwrite the active engagement or archive an old one without explicit confirmation.
+Determine the active coding agent, then look only in its `engagements` directory or at a path the user explicitly supplied. Do not search the home directory broadly.
+
+- If the client is known and its profile exists, read it and preserve confirmed values.
+- If exactly one profile exists, offer to resume it.
+- If multiple profiles exist, ask the user which engagement is active before reading their contents.
+- If no profile exists, start a new provisional profile.
+
+Do not overwrite the active engagement or archive an old one without explicit confirmation.
 
 If no profile exists, start with the minimum facts:
 
@@ -140,13 +159,15 @@ github:
   status: pending
 
 advisor:
+  runtime: claude-code
+  profile_version: 1
   notification_channel: unknown
   cache_retention_days: unknown
 ```
 
 Omit unavailable sections when that is clearer. Do not invent placeholder identifiers.
 
-After confirmation, persist the profile locally using restrictive file permissions where the environment supports them. Do not add it to Git.
+After confirmation, persist the profile under the active agent's `engagements` directory using restrictive file permissions. Do not add it to Git or share it with another agent automatically.
 
 ### 7. Finish with readiness, not ceremony
 
