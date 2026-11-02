@@ -8,8 +8,9 @@ Each skill lives in its own directory under `skills/` and follows the standard `
 
 | Skill | Description |
 | --- | --- |
+| `engagement-onboarding` | Progressively discovers and configures a single client workspace for a local, read-only work advisor. |
 | `expert-lens` | Adds practitioner-grade context, gotchas, trends, and expert mental models to learning and exploration requests. |
-| `letmecode` | Guides a developer through coding tasks as a learning coach while the developer writes the code themselves. |
+| `letmecode` | Preserves developer reasoning while teaching unknowns and allowing bounded delegation of low-learning-value work. |
 
 ## Install
 
@@ -75,6 +76,10 @@ Current layout:
 
 ```text
 skills/
+  engagement-onboarding/
+    agents/
+      openai.yaml
+    SKILL.md
   expert-lens/
     agents/
       openai.yaml
@@ -82,6 +87,7 @@ skills/
     SPEC.md
     SOURCES.md
   letmecode/
+    PRODUCT-CONCEPT.md
     SKILL.md
 ```
 
