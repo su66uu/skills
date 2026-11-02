@@ -8,6 +8,7 @@ Each skill lives in its own directory under `skills/` and follows the standard `
 
 | Skill | Description |
 | --- | --- |
+| `daily-work-advisor` | Reviews daily Jira work, researches selected tickets, and advises on progress and PR readiness without taking external actions. |
 | `engagement-onboarding` | Progressively discovers and configures a single client workspace for a local, read-only work advisor. |
 | `expert-lens` | Adds practitioner-grade context, gotchas, trends, and expert mental models to learning and exploration requests. |
 | `letmecode` | Preserves developer reasoning while teaching unknowns and allowing bounded delegation of low-learning-value work. |
@@ -76,6 +77,10 @@ Current layout:
 
 ```text
 skills/
+  daily-work-advisor/
+    agents/
+      openai.yaml
+    SKILL.md
   engagement-onboarding/
     agents/
       openai.yaml

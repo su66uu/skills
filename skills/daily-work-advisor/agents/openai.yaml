@@ -1,0 +1,4 @@
+interface:
+  display_name: "Daily Work Advisor"
+  short_description: "Research and prioritize daily client work"
+  default_prompt: "Use $daily-work-advisor to review my current work and help me choose and research today’s tickets."
