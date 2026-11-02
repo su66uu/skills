@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engagement Onboarding"
+  short_description: "Set up a progressive client work profile"
+  default_prompt: "Use $engagement-onboarding to discover and configure my current client workspace safely."
