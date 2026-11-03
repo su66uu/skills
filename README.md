@@ -12,6 +12,7 @@ Each skill lives in its own directory under `skills/` and follows the standard `
 | `engagement-onboarding` | Progressively discovers and configures a single client workspace for a local, read-only work advisor. |
 | `expert-lens` | Adds practitioner-grade context, gotchas, trends, and expert mental models to learning and exploration requests. |
 | `letmecode` | Preserves developer reasoning while teaching unknowns and allowing bounded delegation of low-learning-value work. |
+| `review-ticket` | Produces one consolidated pre-implementation critique of a well-defined ticket. |
 
 ## Install
 
@@ -95,6 +96,10 @@ skills/
     SOURCES.md
   letmecode/
     PRODUCT-CONCEPT.md
+    SKILL.md
+  review-ticket/
+    agents/
+      openai.yaml
     SKILL.md
 ```
 
