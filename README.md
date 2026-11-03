@@ -10,6 +10,7 @@ Each skill lives in its own directory under `skills/` and follows the standard `
 | --- | --- |
 | `expert-lens` | Adds practitioner-grade context, gotchas, trends, and expert mental models to learning and exploration requests. |
 | `letmecode` | Guides a developer through coding tasks as a learning coach while the developer writes the code themselves. |
+| `review-ticket` | Produces one consolidated pre-implementation critique of a well-defined ticket. |
 
 ## Install
 
@@ -82,6 +83,10 @@ skills/
     SPEC.md
     SOURCES.md
   letmecode/
+    SKILL.md
+  review-ticket/
+    agents/
+      openai.yaml
     SKILL.md
 ```
 

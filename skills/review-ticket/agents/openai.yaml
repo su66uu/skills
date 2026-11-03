@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Ticket"
+  short_description: "Critique a ticket before implementation"
+  default_prompt: "Use $review-ticket to inspect this ticket and return one consolidated pre-implementation review."
