@@ -32,14 +32,15 @@ Determine the active coding agent and load its engagement profile using the same
 
 Do not infer the active agent from directories alone. If one profile exists, use it. If multiple profiles exist, ask which engagement is active. If none exists, direct the user to `$engagement-onboarding` rather than inventing values. For board-driven workflows, also require a stable Jira account ID and a confirmed board plus squad/team work scope; ask the user to resume onboarding when those fields are missing.
 
-Read the profile but do not silently modify it. Use the configured client identity, Jira board, column mapping, ticket limit, allowed Confluence spaces, repositories, and notification preference. Treat `pending` capabilities as unavailable for the current run.
+Read the profile but do not silently modify it. Use the configured client identity, Jira board filter, exact column-to-status mapping, ticket limit, allowed Confluence spaces, repositories, and notification preference. Treat `pending` capabilities as unavailable for the current run.
 
 ## Jira work scope
 
 Treat the confirmed board and squad/team as a mandatory work-candidate boundary. Build every assigned-work and pickup-candidate query from that base scope; never widen it to the project alone.
 
 - Match "assigned to me" using the stable Jira account ID, not preferred name, display name, or email.
-- Prefer the board's saved filter plus the confirmed squad/team field and value. Use field and option IDs when available.
+- Build candidate queries from the board's saved-filter ID, exact included-column status IDs, and confirmed squad/team field and value. Use field and option IDs when supported and already verified.
+- Never use `statusCategory` as a substitute for board columns. Backlog statuses can belong to the `To Do` category, and Done is still a valid board column.
 - Validate every displayed work candidate against both board membership and squad/team membership. Exclude tickets assigned to another squad even when they share the same project.
 - If the connector cannot enforce or verify the scope, fail closed: show no candidates and explain which scope check is unavailable.
 - Display the effective scope at the top of board-driven results, for example `Scope: Board 1214 · Squad: B2B APIs`.
@@ -47,6 +48,27 @@ Treat the confirmed board and squad/team as a mandatory work-candidate boundary.
 Dependency lookup has a different boundary. A scoped work candidate may be blocked by a ticket from another squad. Allow targeted cross-squad lookup only when explicit or inferred evidence points to that ticket; label its squad when readable and never offer it as pickup work. Do not run a broad cross-squad candidate search.
 
 If the user explicitly supplies an out-of-scope ticket, identify the mismatch and ask before researching it. Never include it automatically.
+
+## Jira read path
+
+Prefer deterministic, server-side filtering over asking an agent to fetch a broad board page and post-filter it.
+
+1. When the engagement marks ACLI verified, invoke the bundled `scripts/acli-readonly-search.sh`; do not invoke arbitrary ACLI subcommands. Build JQL equivalent to:
+
+   ```text
+   filter = <board-filter-id>
+   AND <confirmed-squad-field> = <confirmed-squad-value>
+   AND status IN (<exact-included-status-ids>)
+   AND assignee = <jira-account-id>
+   ORDER BY Rank ASC
+   ```
+
+2. Pass only the fields needed for the current workflow and request JSON. Keep the limit in the query invocation, after all scope clauses are present.
+3. If ACLI is unavailable or unverified, use Atlassian MCP v2. Supply the same exact status and squad clauses as server-side JQL to `getJiraBoardIssueData`, set `source` to `board`, and never request `backlog` or `both` during a normal scan.
+4. If the board has a Kanban subquery or its backlog cannot be distinguished by exact status IDs, do not assume `filter = <id>` reproduces the visible board. Use the board-specific MCP read path or fail closed.
+5. If neither path can enforce the stored filter, status, and squad boundaries, return no candidates and explain which boundary could not be verified. Never fall back to project-wide JQL.
+
+The bundled wrapper constrains the invoked ACLI operation to `jira workitem search`, but the installed ACLI binary and its credentials may still be write-capable. Describe this as an operational guardrail, not hard read-only enforcement.
 
 ## Choose the workflow
 
@@ -66,7 +88,7 @@ Whenever a Jira ticket is shown or mentioned, format it as `KEY — Summary`. In
 
 ## Morning scan
 
-Use the Jira board's actual column mapping within the confirmed work scope. Read only the configured To Do and In Progress equivalents. Default to tickets assigned to the engagement's Jira account ID and exclude unassigned tickets unless the profile or user says otherwise.
+Use the Jira board's exact stored status mappings within the confirmed work scope. Query only the configured To Do and In Progress equivalents. Apply those status IDs in the server-side JQL before limiting results. Default to tickets assigned to the engagement's Jira account ID and exclude unassigned tickets unless the profile or user says otherwise.
 
 Fetch metadata only:
 
@@ -78,7 +100,7 @@ Fetch metadata only:
 - Blocked or flagged state when available as metadata.
 - Already-linked PR state only when it is inexpensive to obtain.
 
-Do not fetch descriptions, comments, histories, Confluence pages, code, diffs, or full PR details. Respect the configured result limit, defaulting to 15. Prefer In Progress first, then blocked/high-priority/recently updated To Do work.
+Do not fetch descriptions, comments, histories, Confluence pages, code, diffs, or full PR details. Respect the configured result limit, defaulting to 15. Never retrieve the first N items from all board columns and filter afterward. Prefer In Progress first, then blocked/high-priority/recently updated To Do work.
 
 Return a compact list grouped by In Progress and To Do. Highlight only obvious attention items, then ask the user to select today's tickets. Do not choose for the user.
 
@@ -86,7 +108,7 @@ Return a compact list grouped by In Progress and To Do. Highlight only obvious a
 
 When the assigned To Do/In Progress query returns no tickets, automatically switch to a pickup-candidate scan. Do not spend another query searching arbitrary non-Done statuses assigned to the user.
 
-1. Fetch unassigned tickets from the board's To Do equivalent within the confirmed squad/team work scope. Do not include tickets assigned to another person or squad.
+1. Fetch unassigned tickets using the exact To Do status IDs, board filter, and confirmed squad/team scope, with `assignee IS EMPTY`. Keep backlog statuses excluded even when they share the Jira `To Do` category. Do not include tickets assigned to another person or squad.
 2. Select at most three candidates using board rank first, priority second, and recent activity as the tie-breaker.
 3. Run a shallow dependency preflight on only those candidates. Check:
    - Blocked/flagged metadata and explicit issue links.
@@ -206,6 +228,8 @@ Do not persist selections or fetched content by default. If cross-session monito
 - State what could not be checked instead of expanding the search indefinitely.
 
 ## Read-only command posture
+
+For ACLI morning scans, use `scripts/acli-readonly-search.sh` from this skill. It accepts JQL, a bounded result limit, and a restricted field list, then invokes only `acli jira workitem search --json`. Never use ACLI create, edit, assign, transition, comment, link, archive, delete, or authentication-switching commands. If the wrapper is unavailable, prefer the MCP read fallback instead of invoking unrestricted ACLI.
 
 When GitHub CLI is the available interface, limit use to read operations such as `gh pr list`, `gh pr view`, `gh pr checks`, `gh pr diff`, and `gh issue view`. Never use commands that create, edit, comment, review, approve, merge, close, rerun, or trigger.
 

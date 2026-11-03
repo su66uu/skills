@@ -80,6 +80,8 @@ skills/
   daily-work-advisor/
     agents/
       openai.yaml
+    scripts/
+      acli-readonly-search.sh
     SKILL.md
   engagement-onboarding/
     agents/

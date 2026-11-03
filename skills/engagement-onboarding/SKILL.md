@@ -75,10 +75,11 @@ Use non-mutating checks to inventory what is already configured:
 - Git remotes and locally configured author identity.
 - Applicable `AGENTS.md` files and their scope.
 - Configured MCP server names and exposed read/write capabilities.
+- Atlassian CLI availability, version, and current Jira authentication status using only `acli --version` and `acli jira auth status`.
 - GitHub CLI availability and authenticated identity.
 - Available local notification mechanisms.
 
-Do not install, authenticate, reconfigure, or repair anything during onboarding. Report those as follow-up actions for the user.
+Do not install, authenticate, switch accounts, reconfigure, or repair anything during onboarding. Report those as follow-up actions for the user.
 
 ### 3. Discover connected systems narrowly
 
@@ -88,8 +89,10 @@ For Jira and Confluence:
 
 - Identify the accessible site and current account, including the stable Jira account ID used for assignee queries.
 - Discover candidate boards only when the primary board is unknown.
-- Inspect the selected board's name, saved-filter ID when available, and column mappings, not ticket descriptions or entire backlogs.
+- Prefer Atlassian MCP v2 board metadata tools during discovery. Inspect the selected board's name, saved-filter ID, Kanban subquery when present, and column-to-status mappings, not ticket descriptions or entire backlogs.
+- Record the exact Jira status IDs and names mapped to each included daily-work column. Keep the backlog and Done mappings separate even when their statuses share the broad Jira `To Do` or `Done` categories.
 - Discover the user's work scope within the board, such as squad or team. Prefer the Jira field ID and option ID plus their display names. Derive them from board configuration or a user-confirmed in-scope ticket, then ask the user to confirm the value.
+- Verify that the board filter, included status IDs, and squad/team clause can be combined in a narrow read-only query. Do not accept a broad `statusCategory` query as proof of column scope.
 - Keep work-candidate scope separate from dependency scope: daily work must match the confirmed squad/team, while a blocker may belong to another squad.
 - Record allowed or relevant Confluence spaces only after they become known through actual work or user confirmation.
 
@@ -106,6 +109,8 @@ Prefer existing client-provided integrations. Do not create alternative MCP or c
 
 Present discovered identities and Jira work scope for confirmation. Flag mismatches between the client email, Jira account, GitHub account, Git author, site, organization, repository remote, board, and squad/team. A preferred name may differ from the Jira display name; use the stable Jira account ID for matching.
 
+When ACLI is available, compare its active Jira site and identity with the engagement profile. Treat ACLI as write-capable even when the advisor intends to use only search commands. Record whether ACLI is installed, authenticated to the correct site, and verified for deterministic read queries; never store its credentials.
+
 Build a capability report containing:
 
 - What can be read now.
@@ -121,10 +126,11 @@ Never claim that a connector or CLI is read-only solely because this skill promi
 Collect preferences only as they become useful:
 
 - Primary Jira board.
-- Jira board name and saved-filter ID when available.
+- Jira board name and saved-filter ID.
 - Stable Jira account ID for the active identity.
 - Work-candidate squad/team field and value. Treat this as required before the daily advisor recommends tickets.
-- Board columns for the morning scan, defaulting to the board's To Do and In Progress equivalents.
+- Board columns for the morning scan, defaulting to the board's To Do and In Progress equivalents, with their exact status IDs and names.
+- Preferred Jira read interface. Prefer ACLI after its site, identity, and query behavior are verified; otherwise retain Atlassian MCP v2 as a read-only fallback.
 - Whether to include unassigned tickets; default to false.
 - Morning ticket limit; default to 15.
 - Relevant repositories and Confluence spaces as they are discovered.
@@ -152,13 +158,23 @@ jira:
   board_id: unknown
   board_name: unknown
   board_filter_id: unknown
+  board_subquery_present: unknown
   work_scope:
     field_id: unknown
     field_name: Squad
     value_id: unknown
     value_name: B2B APIs
     status: discovered
-  included_columns: []
+  included_columns:
+    - name: To Do
+      status_ids: []
+      status_names: []
+    - name: In Progress
+      status_ids: []
+      status_names: []
+  read_interface:
+    preferred: atlassian-mcp-v2
+    acli_status: pending
   morning_ticket_limit: 15
   status: discovered
 
@@ -174,7 +190,7 @@ github:
 
 advisor:
   runtime: claude-code
-  profile_version: 1
+  profile_version: 2
   notification_channel: unknown
   cache_retention_days: unknown
 ```
@@ -193,13 +209,14 @@ Return:
 4. Read-only enforcement warnings.
 5. The single most useful next action.
 
-When new access arrives, resume from the saved profile, re-check only the affected capability, and request confirmation before changing previously confirmed mappings. When an existing profile lacks Jira account or work-scope fields, offer to backfill them without redoing unrelated onboarding.
+When new access arrives, resume from the saved profile, re-check only the affected capability, and request confirmation before changing previously confirmed mappings. When an existing profile lacks the Jira account, board filter, exact column statuses, ACLI state, or work-scope fields, offer to backfill them without redoing unrelated onboarding.
 
 ## Decision rules
 
 - Prefer discovery over questions, and confirmation over re-entry.
 - Prefer narrow metadata calls over broad searches.
-- Fail closed on daily work readiness when the Jira squad/team scope cannot be verified; keep onboarding otherwise usable and mark that scope pending.
+- Fail closed on daily work readiness when the board filter ID, exact included-column status mappings, or Jira squad/team scope cannot be verified; keep onboarding otherwise usable and mark that scope pending.
+- Do not mark ACLI ready merely because it is installed. Require the correct authenticated site and one narrow read-only query whose results satisfy the stored board, status, and squad/team boundaries.
 - Do not require a full repository inventory.
 - Do not make onboarding wait for GitHub or Confluence when Jira-only assistance is already possible.
 - Draft access-request text when useful, but never send it.
