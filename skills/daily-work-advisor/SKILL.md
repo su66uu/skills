@@ -118,12 +118,18 @@ Prioritize explicit review requests first, then PRs with passing CI, then the ol
 
 The review queue is independent of the assigned-work queue. Run it even when the user has assigned In Progress or To Do work. Never submit a review, approval, change request, or comment.
 
-### Empty assigned queue
+### Pickup candidates
 
-When the assigned To Do/In Progress query returns no tickets, automatically switch to a pickup-candidate scan. Do not spend another query searching arbitrary non-Done statuses assigned to the user.
+Choose pickup behavior from the assigned development state:
+
+- If one or more assigned In Progress tickets exist, run the pickup scan regardless of blocker evidence or assigned To Do work. Inspect at most three candidates and display exactly one viable candidate for background preparation.
+- If no assigned In Progress ticket exists but one or more assigned To Do tickets exist, do not run an automatic pickup scan.
+- If neither assigned In Progress nor assigned To Do tickets exist, run the empty-queue pickup scan and display up to three viable candidates.
+
+The review queue remains independent and always runs. Do not spend another query searching arbitrary non-Done statuses assigned to the user.
 
 1. Fetch unassigned tickets using the exact To Do status IDs, board filter, and confirmed squad/team scope, with `assignee IS EMPTY`. Keep backlog statuses excluded even when they share the Jira `To Do` category. Do not include tickets assigned to another person or squad.
-2. Select at most three candidates using board rank first, priority second, and recent activity as the tie-breaker.
+2. Inspect at most three candidates using board rank first, priority second, and recent activity as the tie-breaker.
 3. Run a shallow dependency preflight on only those candidates. Check:
    - Blocked/flagged metadata and explicit issue links.
    - Direct dependency statements and ticket-key references in the candidate.
@@ -138,11 +144,12 @@ When the assigned To Do/In Progress query returns no tickets, automatically swit
    - `possible dependency`: evidence suggests ordering but is insufficient to call it a blocker.
    - `no blocker evidence found`: no blocker is visible after the shallow checks; this is not proof that none exists.
    - `unknown`: dependency information cannot be verified reliably.
-6. Show the evidence and confidence for each candidate. Include `KEY — Summary (Status, Squad)` for every cross-squad blocker or dependent ticket. Ask the user which candidate to research; never assign or transition it.
+6. For the one-candidate branch, display the highest-ranked inspected candidate without a confirmed blocker. If all inspected candidates have confirmed blockers, report that no viable pickup candidate was found and show the blockers; do not recommend a blocked ticket. For the empty-queue branch, display up to three inspected candidates without confirmed blockers.
+7. Show the evidence and confidence for every displayed candidate. Include `KEY — Summary (Status, Squad)` for every cross-squad blocker or dependent ticket. Ask the user which candidate to research; never assign or transition it.
 
 Do not infer a dependency merely because tickets share an epic, component, label, or sprint. Use those attributes only to find stronger evidence. After the user selects a candidate, use the ticket-research workflow to inspect code, architecture, and indirect technical prerequisites more deeply.
 
-Treat `include_unassigned: false` as the default for the normal morning scan, not as a prohibition on this empty-queue fallback. Keep the fallback shallow until the user selects a ticket.
+Treat `include_unassigned: false` as the default for the normal morning scan, not as a prohibition on these pickup scans. Keep pickup analysis shallow until the user selects a ticket.
 
 ## Ticket research
 
