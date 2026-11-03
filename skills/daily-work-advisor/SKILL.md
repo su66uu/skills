@@ -122,32 +122,38 @@ The review queue is independent of the assigned-work queue. Run it even when the
 
 Choose pickup behavior from the assigned development state:
 
-- If one or more assigned In Progress tickets exist, run the pickup scan regardless of blocker evidence or assigned To Do work. Inspect at most three candidates and display exactly one viable candidate for background preparation.
+- If one or more assigned In Progress tickets exist, run the pickup scan regardless of blocker evidence or assigned To Do work. Display exactly one viable related candidate for background preparation.
 - If no assigned In Progress ticket exists but one or more assigned To Do tickets exist, do not run an automatic pickup scan.
-- If neither assigned In Progress nor assigned To Do tickets exist, run the empty-queue pickup scan and display up to three viable candidates.
+- If neither assigned In Progress nor assigned To Do tickets exist, run the empty-queue pickup scan and display up to three viable related candidates.
 
 The review queue remains independent and always runs. Do not spend another query searching arbitrary non-Done statuses assigned to the user.
 
-1. Fetch unassigned tickets using the exact To Do status IDs, board filter, and confirmed squad/team scope, with `assignee IS EMPTY`. Keep backlog statuses excluded even when they share the Jira `To Do` category. Do not include tickets assigned to another person or squad.
-2. Inspect at most three candidates using board rank first, priority second, and recent activity as the tie-breaker.
-3. Run a shallow dependency preflight on only those candidates. Check:
+1. Build a bounded recent-work context of at most three development tickets, in this order:
+   - Tickets the user explicitly selected or researched in the current conversation.
+   - Current In Progress tickets with evidence that the user actively worked on them, such as user confirmation or a linked branch or pull request authored by the configured GitHub identity.
+   - Recently completed development tickets with user-authored work, only when they are inexpensive to identify.
+   Do not use a ticket merely because the user reviewed its pull request, and do not run a broad Jira-history search to discover seeds.
+2. Starting from those seeds, inspect at most three strongest related records. Prefer an explicit follow-up or dependency, then a ready sibling under the same parent, then a ticket in the same epic as weaker evidence. A shared epic, component, label, or sprint alone does not prove sequencing.
+3. Keep a related record as a pickup candidate only when it is unassigned and belongs to the exact To Do status IDs, board filter, and confirmed squad/team scope. Keep backlog statuses excluded even when they share the Jira `To Do` category. Exclude parent or coordination tickets when child tickets contain the implementation work. Do not include tickets assigned to another person or squad.
+4. Rank eligible candidates by direct successor relationship, dependency readiness, and relationship strength. Use board rank, priority, and recent activity only as tie-breakers. Never fall back to an unrelated top-ranked To Do ticket.
+5. Run a shallow dependency preflight on only those candidates. Check:
    - Blocked/flagged metadata and explicit issue links.
    - Direct dependency statements and ticket-key references in the candidate.
    - Targeted searches for open tickets that reference the candidate key, including another squad when evidence points there.
    - Parent, epic, and sibling relationships as search leads, not proof of dependency.
    - Directly linked documentation that specifies implementation order.
    - Linked branches or pull requests that clearly require another unmerged change.
-4. Resolve the current status, short summary, and squad/team of each suspected blocker when readable. Distinguish `candidate is blocked by X` from `candidate blocks X`. Do not load the whole board, blocker descriptions, or unrelated documents.
-5. Classify the evidence:
+6. Resolve the current status, short summary, and squad/team of each suspected blocker when readable. Distinguish `candidate is blocked by X` from `candidate blocks X`. Do not load the whole board, blocker descriptions, or unrelated documents.
+7. Classify the evidence:
    - `confirmed blocker`: an explicit link, documented order, or direct technical prerequisite establishes the dependency.
    - `probable blocker`: strong ticket, documentation, or pull-request evidence indicates an undocumented dependency.
    - `possible dependency`: evidence suggests ordering but is insufficient to call it a blocker.
    - `no blocker evidence found`: no blocker is visible after the shallow checks; this is not proof that none exists.
    - `unknown`: dependency information cannot be verified reliably.
-6. For the one-candidate branch, display the highest-ranked inspected candidate without a confirmed blocker. If all inspected candidates have confirmed blockers, report that no viable pickup candidate was found and show the blockers; do not recommend a blocked ticket. For the empty-queue branch, display up to three inspected candidates without confirmed blockers.
-7. Show the evidence and confidence for every displayed candidate. Include `KEY — Summary (Status, Squad)` for every cross-squad blocker or dependent ticket. Ask the user which candidate to research; never assign or transition it.
+8. For the one-candidate branch, display the highest-ranked eligible candidate without a confirmed blocker. If neither that branch nor the empty-queue branch finds an eligible related candidate, report `No eligible related pickup candidate in To Do`. Mention at most three strongly related Backlog tickets as informational follow-ups, clearly label them outside pickup scope, and do not recommend them. If all eligible candidates have confirmed blockers, report that no viable pickup candidate was found and show the blockers; do not recommend a blocked ticket. For the empty-queue branch, display up to three eligible related candidates without confirmed blockers.
+9. Show the relationship, dependency evidence, and confidence for every displayed candidate. Include `KEY — Summary (Status, Squad)` for every cross-squad blocker or dependent ticket. Ask the user which candidate to research; never assign or transition it.
 
-Do not infer a dependency merely because tickets share an epic, component, label, or sprint. Use those attributes only to find stronger evidence. After the user selects a candidate, use the ticket-research workflow to inspect code, architecture, and indirect technical prerequisites more deeply.
+After the user selects a candidate, use the ticket-research workflow to inspect code, architecture, and indirect technical prerequisites more deeply.
 
 Treat `include_unassigned: false` as the default for the normal morning scan, not as a prohibition on these pickup scans. Keep pickup analysis shallow until the user selects a ticket.
 
