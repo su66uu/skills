@@ -1,6 +1,6 @@
 ---
 name: daily-work-advisor
-description: Run a local, read-only daily engineering workflow using an active engagement profile. Use when reviewing the morning Jira board, choosing today's work, researching selected Jira tickets, challenging requirements or proposed designs, preparing clarification questions, checking ticket and pull-request progress, assessing merge readiness, or requesting local notifications about meaningful changes.
+description: Run a local, read-only daily engineering workflow using an active engagement profile. Use when reviewing the morning Jira board, finding unreviewed team pull requests, choosing today's work, researching selected Jira tickets, challenging requirements or proposed designs, preparing clarification questions, checking ticket and pull-request progress, assessing merge readiness, or requesting local notifications about meaningful changes.
 ---
 
 # Daily Work Advisor
@@ -30,7 +30,7 @@ Determine the active coding agent and load its engagement profile using the same
 - Codex: `$CODEX_HOME/engagements/*.yaml` when `CODEX_HOME` is set, otherwise `~/.codex/engagements/*.yaml`
 - Other agents: use the agent's established configuration directory or ask the user.
 
-Do not infer the active agent from directories alone. If one profile exists, use it. If multiple profiles exist, ask which engagement is active. If none exists, direct the user to `$engagement-onboarding` rather than inventing values. For board-driven workflows, also require a stable Jira account ID and a confirmed board plus squad/team work scope; ask the user to resume onboarding when those fields are missing.
+Do not infer the active agent from directories alone. If one profile exists, use it. If multiple profiles exist, ask which engagement is active. If none exists, direct the user to `$engagement-onboarding` rather than inventing values. For board-driven workflows, also require a stable Jira account ID and a confirmed board plus squad/team work scope; ask the user to resume onboarding when those fields are missing. The review queue additionally requires exact Review-column status IDs and a confirmed GitHub account. If only those review fields are missing, skip that section and offer a narrow onboarding backfill without blocking the development scan.
 
 Read the profile but do not silently modify it. Use the configured client identity, Jira board filter, exact column-to-status mapping, ticket limit, allowed Confluence spaces, repositories, and notification preference. Treat `pending` capabilities as unavailable for the current run.
 
@@ -63,6 +63,8 @@ Prefer deterministic, server-side filtering over asking an agent to fetch a broa
    ORDER BY Rank ASC
    ```
 
+   For the team review queue, use the same board-filter and squad clauses with only the exact Review status IDs and no assignee clause.
+
 2. Pass only the fields needed for the current workflow and request JSON. Keep the limit in the query invocation, after all scope clauses are present.
 3. If ACLI is unavailable or unverified, use Atlassian MCP v2. Supply the same exact status and squad clauses as server-side JQL to `getJiraBoardIssueData`, set `source` to `board`, and never request `backlog` or `both` during a normal scan.
 4. If the board has a Kanban subquery or its backlog cannot be distinguished by exact status IDs, do not assume `filter = <id>` reproduces the visible board. Use the board-specific MCP read path or fail closed.
@@ -74,7 +76,7 @@ The bundled wrapper constrains the invoked ACLI operation to `jira workitem sear
 
 Match the user's request to the smallest workflow that answers it:
 
-1. **Morning scan** — show a compact view of work that could matter today.
+1. **Morning scan** — show assigned development work, unreviewed team pull requests, and pickup candidates when needed.
 2. **Ticket research** — deeply investigate only tickets the user selects.
 3. **Progress check** — explain the current state and next action for selected work.
 4. **PR readiness** — assess whether a linked PR appears mergeable.
@@ -88,7 +90,7 @@ Whenever a Jira ticket is shown or mentioned, format it as `KEY — Summary`. In
 
 ## Morning scan
 
-Use the Jira board's exact stored status mappings within the confirmed work scope. Query only the configured To Do and In Progress equivalents. Apply those status IDs in the server-side JQL before limiting results. Default to tickets assigned to the engagement's Jira account ID and exclude unassigned tickets unless the profile or user says otherwise.
+Use the Jira board's exact stored status mappings within the confirmed work scope. Query the configured To Do and In Progress equivalents for development work assigned to the engagement's Jira account ID. Separately query the configured Review equivalent across the confirmed squad regardless of Jira assignee. Apply status IDs in server-side JQL before limiting results.
 
 Fetch metadata only:
 
@@ -102,7 +104,19 @@ Fetch metadata only:
 
 Do not fetch descriptions, comments, histories, Confluence pages, code, diffs, or full PR details. Respect the configured result limit, defaulting to 15. Never retrieve the first N items from all board columns and filter afterward. Prefer In Progress first, then blocked/high-priority/recently updated To Do work.
 
-Return a compact list grouped by In Progress and To Do. Highlight only obvious attention items, then ask the user to select today's tickets. Do not choose for the user.
+Return a compact list grouped by In Progress, To Do, and Reviews needing you. Highlight only obvious attention items, then ask the user to select today's development and review work. Do not choose for the user.
+
+### Reviews needing you
+
+Treat every open pull request linked to a ticket in the confirmed squad's Review column as a review candidate; do not require an explicit GitHub review request. Exclude pull requests authored by the engagement's GitHub account and exclude drafts from the actionable list.
+
+Use read-only pull-request metadata to compare the exact configured GitHub identity's submitted reviews with the current head commit. A pull request is already reviewed only when the user's latest non-pending review targets the current head commit, has not been dismissed, and no fresh review request exists. Count submitted `APPROVED`, `CHANGES_REQUESTED`, and `COMMENTED` reviews as reviewed. Make it eligible again when commits were pushed after that review, the review was dismissed, or a new review request was made.
+
+Fetch only the linked PR number, title, URL, author, draft/open state, head commit, latest review by the configured identity, current review requests, review decision, and compact CI state. Do not fetch the diff, files, comments, or ticket body until the user selects a PR to review.
+
+Prioritize explicit review requests first, then PRs with passing CI, then the oldest waiting candidates. Show `KEY — Summary` with repository and PR number. If linkage or review freshness cannot be verified, keep the item out of the actionable list and report it briefly under `Review state unknown`; do not guess that it is unreviewed.
+
+The review queue is independent of the assigned-work queue. Run it even when the user has assigned In Progress or To Do work. Never submit a review, approval, change request, or comment.
 
 ### Empty assigned queue
 

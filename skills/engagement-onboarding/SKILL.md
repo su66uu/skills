@@ -98,10 +98,11 @@ For Jira and Confluence:
 
 For GitHub and repositories:
 
-- Identify the authenticated account and current repository or organization when available.
+- Identify the authenticated account and current repository or organization when available. Confirm the exact account used to match the user's prior pull-request reviews.
 - Do not enumerate every accessible repository by default.
 - Learn repository mappings from the user's selected tickets, linked PRs, the current workspace, or explicit confirmation.
 - Record expected repositories as `pending` when access has not arrived.
+- Record whether the review queue includes only explicit requests or all unreviewed pull requests linked from the confirmed board, squad, and Review column.
 
 Prefer existing client-provided integrations. Do not create alternative MCP or credential configuration unless the user separately requests implementation work.
 
@@ -130,7 +131,9 @@ Collect preferences only as they become useful:
 - Stable Jira account ID for the active identity.
 - Work-candidate squad/team field and value. Treat this as required before the daily advisor recommends tickets.
 - Board columns for the morning scan, defaulting to the board's To Do and In Progress equivalents, with their exact status IDs and names.
+- The board's Review equivalent, with its exact status IDs and names, when the user wants a morning review queue.
 - Preferred Jira read interface. Prefer ACLI after its site, identity, and query behavior are verified; otherwise retain Atlassian MCP v2 as a read-only fallback.
+- GitHub review identity and review scope. Default to explicitly requested reviews unless the user chooses all unreviewed pull requests in the confirmed board and squad scope.
 - Whether to include unassigned tickets; default to false.
 - Morning ticket limit; default to 15.
 - Relevant repositories and Confluence spaces as they are discovered.
@@ -172,6 +175,9 @@ jira:
     - name: In Progress
       status_ids: []
       status_names: []
+    - name: Review
+      status_ids: []
+      status_names: []
   read_interface:
     preferred: atlassian-mcp-v2
     acli_status: pending
@@ -186,11 +192,12 @@ github:
   account: unknown
   organization: unknown
   repositories: []
+  review_scope: all-unreviewed-board-prs
   status: pending
 
 advisor:
   runtime: claude-code
-  profile_version: 2
+  profile_version: 3
   notification_channel: unknown
   cache_retention_days: unknown
 ```
@@ -209,7 +216,7 @@ Return:
 4. Read-only enforcement warnings.
 5. The single most useful next action.
 
-When new access arrives, resume from the saved profile, re-check only the affected capability, and request confirmation before changing previously confirmed mappings. When an existing profile lacks the Jira account, board filter, exact column statuses, ACLI state, or work-scope fields, offer to backfill them without redoing unrelated onboarding.
+When new access arrives, resume from the saved profile, re-check only the affected capability, and request confirmation before changing previously confirmed mappings. When an existing profile lacks the Jira account, board filter, exact column statuses including Review, ACLI state, GitHub review identity, review scope, or work-scope fields, offer to backfill them without redoing unrelated onboarding.
 
 ## Decision rules
 
